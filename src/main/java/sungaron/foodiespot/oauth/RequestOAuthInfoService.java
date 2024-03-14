@@ -1,7 +1,6 @@
 package sungaron.foodiespot.oauth;
 
 import org.springframework.stereotype.Component;
-import sungaron.foodiespot.entity.OAuthProvider;
 import sungaron.foodiespot.oauth.ApiClient.OAuthApiClient;
 import sungaron.foodiespot.oauth.loginParams.OAuthLoginParams;
 import sungaron.foodiespot.oauth.response.OAuthInfoResponse;

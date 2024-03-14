@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import sungaron.foodiespot.entity.OAuthProvider;
+import sungaron.foodiespot.oauth.OAuthProvider;
 import sungaron.foodiespot.oauth.loginParams.OAuthLoginParams;
 import sungaron.foodiespot.oauth.response.NaverInfoResponse;
 import sungaron.foodiespot.oauth.response.OAuthInfoResponse;
@@ -21,16 +21,16 @@ public class NaverApiClient implements OAuthApiClient {
 
     private static final String GRANT_TYPE = "authorization_code";
 
-    @Value("${oauth.naver.url.auth}")
+    @Value("${spring.oauth.naver.url.auth}")
     private String authUrl;
 
-    @Value("${oauth.naver.url.api}")
+    @Value("${spring.oauth.naver.url.api}")
     private String apiUrl;
 
-    @Value("${oauth.naver.client-id}")
+    @Value("${spring.oauth.naver.client-id}")
     private String clientId;
 
-    @Value("${oauth.naver.secret}")
+    @Value("${spring.oauth.naver.secret}")
     private String clientSecret;
 
     private final RestTemplate restTemplate;
@@ -72,6 +72,7 @@ public class NaverApiClient implements OAuthApiClient {
 
         HttpEntity<?> request = new HttpEntity<>(body, httpHeaders);
 
+        //postForObject : POST 요청을 보내고 객체로 결과 반환받음
         return restTemplate.postForObject(url, request, NaverInfoResponse.class);
     }
 }

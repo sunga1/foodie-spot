@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-import sungaron.foodiespot.entity.OAuthProvider;
+import sungaron.foodiespot.oauth.OAuthProvider;
 import sungaron.foodiespot.oauth.loginParams.OAuthLoginParams;
 import sungaron.foodiespot.oauth.response.KakaoInfoResponse;
 import sungaron.foodiespot.oauth.response.OAuthInfoResponse;
@@ -21,13 +21,13 @@ public class KakaoApiClient implements OAuthApiClient {
 
     private static final String GRANT_TYPE = "authorization_code";
 
-    @Value("${oauth.kakao.url.auth}")
+    @Value("${spring.oauth.kakao.url.auth}")
     private String authUrl;
 
-    @Value("${oauth.kakao.url.api}")
+    @Value("${spring.oauth.kakao.url.api}")
     private String apiUrl;
 
-    @Value("${oauth.kakao.client-id}")
+    @Value("${spring.oauth.kakao.client-id}")
     private String clientId;
 
     private final RestTemplate restTemplate;

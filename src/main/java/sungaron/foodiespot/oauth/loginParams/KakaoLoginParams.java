@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import sungaron.foodiespot.entity.OAuthProvider;
+import sungaron.foodiespot.oauth.OAuthProvider;
 
 @Getter
 @NoArgsConstructor

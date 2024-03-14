@@ -3,7 +3,7 @@ package sungaron.foodiespot.oauth.response;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
-import sungaron.foodiespot.entity.OAuthProvider;
+import sungaron.foodiespot.oauth.OAuthProvider;
 
 @Getter
 @JsonIgnoreProperties(ignoreUnknown = true)

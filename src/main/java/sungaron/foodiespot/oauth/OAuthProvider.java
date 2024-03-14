@@ -1,4 +1,4 @@
-package sungaron.foodiespot.entity;
+package sungaron.foodiespot.oauth;
 
 public enum OAuthProvider {
     KAKAO, NAVER

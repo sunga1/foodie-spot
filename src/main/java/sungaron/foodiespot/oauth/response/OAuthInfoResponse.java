@@ -1,6 +1,6 @@
 package sungaron.foodiespot.oauth.response;
 
-import sungaron.foodiespot.entity.OAuthProvider;
+import sungaron.foodiespot.oauth.OAuthProvider;
 
 public interface OAuthInfoResponse {
     String getEmail();
