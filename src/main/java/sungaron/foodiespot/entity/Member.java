@@ -1,13 +1,9 @@
 package sungaron.foodiespot.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import sungaron.foodiespot.oauth.OAuthProvider;
 
 @Entity
 @Getter
@@ -20,13 +16,23 @@ public class Member {
 
     private String nickname;
 
-    private OAuthProvider oAuthProvider;
+    @Enumerated(EnumType.STRING)
+    private Role role;
+
 
     @Builder
-    public Member(String email, String nickname, OAuthProvider oAuthProvider){
+    public Member(String email, String nickname, Role role){
         this.email=email;
         this.nickname=nickname;
-        this.oAuthProvider=oAuthProvider;
+        this.role=role;
     }
 
+    public Member update(String nickname){
+        this.nickname=nickname;
+        return this;
+    }
+
+    public String getRoleKey(){
+        return this.role.getKey();
+    }
 }

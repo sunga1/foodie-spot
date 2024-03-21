@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/header.html :: head"/>
+<body style="background-color:#F0EAB7;">
+<div th:replace="fragments/header.html :: header ('')"/>
+<section class="features-icons bg-light text-center">
+    <div class="container position-relative">
+        <div class="row justify-content-center">
+            <div class="row justify-content-center" style="width:800px; height:500px; background-color:#6D88CE; border-radius:15px;">
+                <div class="text-center text-white" style="margin-top:70px;">
+                    <!-- Page heading-->
+                    <h3>로그인 및 회원가입</h3>
+                </div>
+                <div class="d-grid gap-2 col-9 mx-auto" style="margin-bottom:100px;">
+                    <button class="btn btn-success" type="button" onclick="location.href= '/oauth2/authorization/naver'">네이버 로그인</button>
+                    <button class="btn btn-warning" type="button" onclick="location.href= '/oauth2/authorization/kakao'">카카오 로그인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+<!-- Bootstrap core JS-->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- Core theme JS-->
+<script src="js/scripts.js"></script>
+<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *-->
+<!-- * *                               SB Forms JS                               * *-->
+<!-- * * Activate your form at https://startbootstrap.com/solution/contact-forms * *-->
+<!-- * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *-->
+<script src="https://cdn.startbootstrap.com/sb-forms-latest.js"></script>
+</body>
+</html>
+
+
