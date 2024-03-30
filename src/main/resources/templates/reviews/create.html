@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/header.html :: head"/>
+<body style="background-color:#F0EAB7;">
+<div th:replace="fragments/header.html :: header ('')"/>
+
+<section class="features-icons bg-light text-center">
+    <div class="container" style="margin-top:-10px;">
+        <div class="row">
+            <div class="col-lg-7">
+                <div class="map_wrap">
+                    <div id="map" style="width:100%;height:500px;position:relative;overflow:hidden; border:3px solid #5973B4;"></div>
+                    <div id="menu_wrap" class="bg_white">
+                        <div class="option">
+                            <div>
+                                <form onsubmit="searchPlaces(); return false;">
+                                    맛집 상호명 : <input type="text" value="종로맛집" id="keyword" size="15">
+                                    <button type="submit">검색하기</button>
+                                </form>
+                            </div>
+                        </div>
+                        <hr>
+                        <ul id="placesList"></ul>
+                        <div id="pagination"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5" style="background-color:white; border:3px solid #5973B4; max-height: 500px; overflow-y: auto;">
+                <form id="reviewForm" class="form-group" th:method="post" th:action="@{/reviews/create}" th:object="${reviewCreateRequest}" enctype="multipart/form-data">
+                    <br/>
+                    <h3 align="center" style="color:#394C7B">맛집등록</h3>
+                    <br/>
+                    <div class="row mb-3">
+                        <label th:for="place_name" class="col-sm-2 col-form-label">맛집명</label>
+                        <div class="col-sm-10">
+                            <input type="text" th:field="*{place_name}" class="form-control"
+                                   placeholder="맛집 상호명을 지도 내 검색창에서 검색해주세요" readonly th:value="*{place_name}"/>
+                        </div>
+                        <div th:class="error-div" th:errors="*{place_name}"/>
+                    </div>
+                    <div class="row mb-3">
+                        <label th:for="address" class="col-sm-2 col-form-label">주소</label>
+                        <div class="col-sm-10">
+                            <input type="text" th:field="*{address}" class="form-control" th:value="*{address}" readonly/>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="row" id="foods"></div>
+                        <div th:class="error-div" th:errors="*{eatFoods}"></div>
+                        <input type="hidden" th:field="*{eatFoods}" id="eatFoodsInput"/>
+                    </div>
+
+
+                    <div class="row mb-3">
+                        <label th:for="multipartFiles" class="col-sm-2 col-form-label">이미지</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" type="file" th:field="*{multipartFiles}" id="formFileMultiple" multiple>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label th:for="rating" class="col-sm-2 col-form-label">평점</label>
+                        <div class="col-sm-3">
+                            <input type="text" th:field="*{rating}" class="form-control" th:value="*{rating}">
+                        </div>
+                        <div class="col-sm-2">
+                            <span class="input-group-text">/10</span>
+                        </div>
+                        <div th:class="error-div" th:errors="*{rating}"/>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label th:for="title" class="col-sm-2 col-form-label">제목</label>
+                        <div class="col-sm-10">
+                            <input type="text" th:field="*{title}" class="form-control" th:value="*{title}"/>
+                        </div>
+                        <div th:class="error-div" th:errors="*{title}"/>
+                    </div>
+
+                    <div class="row mb-3">
+                        <label th:for="content" class="col-sm-2 col-form-label">상세설명</label>
+                        <div class="col-sm-10">
+                            <textarea th:field="*{content}" class="form-control" placeholder="음식점 분위기, 맛 등 자세히 설명해주세요" rows="5"/>
+                        </div>
+                    </div>
+
+                    <div>
+                        <input type="hidden" th:field="*{posX}" id="posX"/>
+                        <input type="hidden" th:field="*{posY}" id="posY"/>
+                    </div>
+                    <button type="submit" class="btn btn-primary">등록</button>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=6373ad20b529890649e467921792b202&libraries=services,clusterer,drawing"></script>
+<script>
+    window.onload = function(){
+        addFoodInput();
+    }
+    // 폼 전송 시 foodInput 태그에 입력된 값들을 eatFoods 필드에 할당하는 함수
+    function updateEatFoods() {
+        var eatFoods = [];
+        var foodInputs = document.getElementsByName("food");
+        for (var i = 0; i < foodInputs.length; i++) {
+            if (foodInputs[i].value.trim() !== "") {
+                eatFoods.push(foodInputs[i].value.trim());
+            }
+        }
+        // hidden input 태그에 수집된 음식들을 콤마로 연결하여 할당
+        document.getElementById("eatFoodsInput").value = eatFoods.join(',');
+    }
+
+    // 폼 전송 버튼 클릭 시 updateEatFoods 함수 호출
+    document.getElementById("reviewForm").addEventListener("submit", updateEatFoods);
+
+    function addFoodInput() {
+        var foodsDiv = document.getElementById("foods");
+        // Label 생성
+        var foodLabel = document.createElement("label");
+        foodLabel.for = "foods";
+        foodLabel.classList.add("col-sm-2","col-form-label");
+        foodLabel.textContent = "먹은음식";
+        // input 생성
+        var foodInputDiv  = document.createElement("div");
+        foodInputDiv.classList.add("col-sm-8");
+        var foodInput = document.createElement("input");
+        foodInput.type = "text";
+        foodInput.name = "food"; // 폼 데이터 전송을 위한 이름
+        foodInput.classList.add("form-control");
+        foodInputDiv.appendChild(foodInput);
+
+        var plusButtonDiv = document.createElement("div");
+        plusButtonDiv.classList.add("col-sm-2");
+        var plusButton = document.createElement("button");
+        plusButton.type = "button";
+        plusButton.classList.add("btn","btn-primary");
+        plusButton.textContent = "+";
+        plusButton.onclick = addFoodInput;
+        plusButtonDiv.appendChild(plusButton);
+
+        // foodsDiv에 추가
+        foodsDiv.appendChild(foodLabel);
+        foodsDiv.appendChild(foodInputDiv);
+        foodsDiv.appendChild(plusButtonDiv);
+    }
+    // 클릭한 마커를 담을 변수
+    var selectedMarker = null;
+
+    // 마커를 담을 배열입니다
+    var markers = [];
+
+    var mapContainer = document.getElementById('map'), // 지도를 표시할 div
+        mapOption = {
+            center: new kakao.maps.LatLng(37.566826, 126.9786567), // 지도의 중심좌표
+            level: 3 // 지도의 확대 레벨
+        };
+
+    // 지도를 생성합니다
+    var map = new kakao.maps.Map(mapContainer, mapOption);
+
+    // 장소 검색 객체를 생성합니다
+    var ps = new kakao.maps.services.Places();
+
+    // 검색 결과 목록이나 마커를 클릭했을 때 장소명을 표출할 인포윈도우를 생성합니다
+    var infowindow = new kakao.maps.InfoWindow({zIndex:1});
+
+    // 키워드로 장소를 검색합니다
+    searchPlaces();
+
+    // 키워드 검색을 요청하는 함수입니다
+    function searchPlaces() {
+        var keyword = document.getElementById('keyword').value;
+
+        if (!keyword.replace(/^\s+|\s+$/g, '')) {
+            alert('키워드를 입력해주세요!');
+            return false;
+        }
+
+        // 장소검색 객체를 통해 키워드로 장소검색을 요청합니다
+        ps.keywordSearch(keyword, placesSearchCB);
+    }
+
+    // 장소검색이 완료됐을 때 호출되는 콜백함수 입니다
+    function placesSearchCB(data, status, pagination) {
+        if (status === kakao.maps.services.Status.OK) {
+            // 정상적으로 검색이 완료됐으면 검색 목록과 마커를 표출합니다
+            displayPlaces(data);
+            // 페이지 번호를 표출합니다
+            displayPagination(pagination);
+        } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
+            alert('검색 결과가 존재하지 않습니다.');
+            return;
+        } else if (status === kakao.maps.services.Status.ERROR) {
+            alert('검색 결과 중 오류가 발생했습니다.');
+            return;
+        }
+    }
+
+    // 검색 결과 목록과 마커를 표출하는 함수입니다
+    function displayPlaces(places) {
+        var listEl = document.getElementById('placesList'),
+            bounds = new kakao.maps.LatLngBounds();
+
+        // 검색 결과 목록에 추가된 항목들을 제거합니다
+        removeAllChildNodes(listEl);
+
+        // 지도에 표시되고 있는 마커를 제거합니다
+        removeMarker();
+
+        for (var i = 0; i < places.length; i++) {
+            var placePosition = new kakao.maps.LatLng(places[i].y, places[i].x),
+                marker = addMarker(placePosition, i),
+                itemEl = getListItem(i, places[i]);
+
+            //console.log(placePosition);
+            //console.log(placePosition['La']);
+            bounds.extend(placePosition);
+
+
+            (function(marker, title, address) {
+                kakao.maps.event.addListener(marker, 'click', function() {
+                    displayInfowindow(marker, title, address);
+
+                });
+                itemEl.onclick = function() {
+                    displayInfowindow(marker, title, address);
+                };
+            })(marker, places[i].place_name, places[i].road_address_name);
+
+            listEl.appendChild(itemEl);
+        }
+
+        map.setBounds(bounds);
+    }
+
+
+    // 검색결과 항목을 Element로 반환하는 함수입니다
+    function getListItem(index, places) {
+        var el = document.createElement('li'),
+            itemStr = '<span class="markerbg marker_' + (index + 1) + '"></span>' +
+                '<div class="info">' +
+                '   <h5>' + places.place_name + '</h5>';
+
+        if (places.road_address_name) {
+            itemStr += '    <span>' + places.road_address_name + '</span>' +
+                '   <span class="jibun gray">' + places.address_name + '</span>';
+        } else {
+            itemStr += '    <span>' + places.address_name + '</span>';
+        }
+
+        itemStr += '  <span class="tel">' + places.phone + '</span>' +
+            '</div>';
+
+        el.innerHTML = itemStr;
+        el.className = 'item';
+
+        return el;
+    }
+
+    // 마커를 생성하고 지도 위에 마커를 표시하는 함수입니다
+    function addMarker(position, idx) {
+        var imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_blue.png', // 마커 이미지 url, 스프라이트 이미지를 씁니다
+            imageSize = new kakao.maps.Size(36, 37),  // 마커 이미지의 크기
+            imgOptions = {
+                spriteSize: new kakao.maps.Size(36, 691), // 스프라이트 이미지의 크기
+                spriteOrigin: new kakao.maps.Point(0, (idx * 46) + 10), // 스프라이트 이미지 중 사용할 영역의 좌상단 좌표
+                offset: new kakao.maps.Point(13, 37) // 마커 좌표에 일치시킬 이미지 내에서의 좌표
+            },
+            markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imgOptions),
+            marker = new kakao.maps.Marker({
+                position: position, // 마커의 위치
+                image: markerImage
+            });
+            // 마커 객체에 마커아이디와 마커의 기본 이미지를 추가합니다
+            marker.normalImage = markerImage;
+
+
+        marker.setMap(map); // 지도 위에 마커를 표출합니다
+        markers.push(marker);  // 배열에 생성된 마커를 추가합니다
+
+        return marker;
+    }
+
+    // 지도 위에 표시되고 있는 마커를 모두 제거합니다
+    function removeMarker() {
+        for (var i = 0; i < markers.length; i++) {
+            markers[i].setMap(null);
+        }
+        markers = [];
+    }
+
+    // 검색결과 목록의 자식 Element를 제거하는 함수입니다
+    function removeAllChildNodes(el) {
+        while (el.hasChildNodes()) {
+            el.removeChild(el.lastChild);
+        }
+    }
+
+    // 인포윈도우에 장소명을 표시하는 함수입니다
+    function displayInfowindow(marker, title, address) {
+        var content = '<div style="padding:5px;z-index:1;">' + title + '</div>';
+
+        // 클릭된 마커가 없고, click 마커가 클릭된 마커가 아니면
+        // 마커의 이미지를 클릭 이미지로 변경합니다
+        if (!selectedMarker || selectedMarker !== marker) {
+            // 클릭된 마커 객체가 null이 아니면
+            // 클릭된 마커의 이미지를 기본 이미지로 변경하고
+            !!selectedMarker && selectedMarker.setImage(selectedMarker.normalImage);
+            var clickedImageSrc = 'https://cdn.icon-icons.com/icons2/1283/PNG/512/1497620001-jd22_85165.png'; // 클릭한 마커의 이미지 url
+            var imageSize = new kakao.maps.Size(52, 53);  // 마커 이미지의 크기
+            var markerImage = new kakao.maps.MarkerImage(clickedImageSrc, imageSize); // 클릭한 마커 이미지 생성
+            // 현재 클릭된 마커의 이미지는 클릭 이미지로 변경합니다
+            marker.setImage(markerImage);
+        }
+
+        // 클릭된 마커를 현재 클릭된 마커 객체로 설정합니다
+        selectedMarker = marker;
+
+        infowindow.setContent(content);
+        infowindow.open(map, marker);
+
+        // 해당 마커의 title을 input 태그에 할당합니다
+        document.getElementById('place_name').value = title;
+        console.log(marker.getPosition()['Ln']);
+        document.getElementById('posX').value=marker.getPosition()['Ma'];
+        document.getElementById('posY').value=marker.getPosition()['La'];
+        document.getElementById('address').value= address;
+        //console.log(address);
+        map.setCenter(marker.getPosition());
+        map.setLevel(2);
+    }
+
+    // 검색결과 목록 하단에 페이지번호를 표시하는 함수입니다
+    function displayPagination(pagination) {
+        var paginationEl = document.getElementById('pagination'),
+            fragment = document.createDocumentFragment(),
+            i;
+
+        // 기존에 추가된 페이지번호를 삭제합니다
+        while (paginationEl.hasChildNodes()) {
+            paginationEl.removeChild(paginationEl.lastChild);
+        }
+
+        for (i = 1; i <= pagination.last; i++) {
+            var el = document.createElement('a');
+            el.href = "#";
+            el.innerHTML = i;
+
+            if (i === pagination.current) {
+                el.className = 'on';
+            } else {
+                el.onclick = (function (i) {
+                    return function () {
+                        pagination.gotoPage(i);
+                    }
+                })(i);
+            }
+
+            fragment.appendChild(el);
+        }
+        paginationEl.appendChild(fragment);
+    }
+
+</script>
+</body>
+</html>
