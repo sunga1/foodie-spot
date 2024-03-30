@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/header.html :: head"/>
+<body style="background-color:#F0EAB7;">
+<div th:replace="fragments/header.html :: header ('my')"/>
+
+<section class="features-icons bg-light text-center">
+    <div class="container" style="margin-top:-10px;">
+        <div class="row">
+            <div class="col-lg-7">
+                <div class="map_wrap">
+                    <div id="map" style="width:100%;height:500px;position:relative;overflow:hidden; border:3px solid #5973B4;"></div>
+                    <div id="menu_wrap_right" class="bg_white">
+                        <div class="option"></div>
+                        <hr>
+                        <ul id="placesList"></ul>
+                        <ul id="paging-ul" class="pagination justify-content-center"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-5" style="background-color:white; border:3px solid #5973B4; max-height: 500px; overflow-y: auto;">
+                <form id="modifyForm" class="form-group" th:method="post" th:action="@{/reviews/modify}" th:object="${reviewDto}" enctype="multipart/form-data">
+                    <br/>
+                    <h3 align="center" style="color:#394C7B">맛집정보</h3>
+                    <br/>
+                    <div class="row mb-3">
+                        <label th:for="place_name" class="col-sm-2 col-form-label">맛집명</label>
+                        <div class="col-sm-10">
+                            <input type="text" th:field="*{place_name}" class="form-control" id="place_name"
+                                   placeholder="맛집 상호명을 지도 내 검색창에서 검색해주세요" readonly/>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label th:for="address" class="col-sm-2 col-form-label">주소</label>
+                        <div class="col-sm-10">
+                            <input type="text" th:field="*{address}" class="form-control" id="address" readonly/>
+                        </div>
+                    </div>
+                    <div id="foods"></div>
+                    <div class="row mb-3">
+                        <label th:for="uploadImages" class="col-sm-2 col-form-label">첨부<br/>이미지</label>
+                        <div class="col-sm-10" id="imageContainer">
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label th:for="uploadImages" class="col-sm-2 col-form-label">이미지</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" type="file" th:field="*{multipartFiles}" id="formFileMultiple" multiple>
+                        </div>
+                        <div> 이미지 업로드 시 원래 이미지는 삭제됩니다.</div>
+                    </div>
+                    <div class="row mb-3">
+                        <label th:for="rating" class="col-sm-2 col-form-label">평점</label>
+                        <div class="col-sm-3">
+                            <input type="text" th:field="*{rating}" class="form-control" th:value="*{rating}">
+                        </div>
+                        <div class="col-sm-2">
+                            <span class="input-group-text">/10</span>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label th:for="title" class="col-sm-2 col-form-label">제목</label>
+                        <div class="col-sm-10">
+                            <input type="text" th:field="*{title}" class="form-control" id="title"/>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <label th:for="content" class="col-sm-2 col-form-label">상세설명</label>
+                        <div class="col-sm-10">
+                            <textarea th:field="*{content}" class="form-control" placeholder="음식점 분위기, 맛 등 자세히 설명해주세요" rows="5"/>
+                        </div>
+                    </div>
+                    <div>
+                        <input type="hidden" th:field="*{eatFoods}" id="eatFoodsInput"/>
+                    </div>
+                    <input type="hidden" th:field="*{id}" id="reviewId"/>
+                        <button type="submit" class="btn btn-primary">수정</button>
+                        <button type="button" class="btn btn-danger" id="deleteReviewBtn">삭제</button>
+
+                </form>
+            </div>
+
+        </div>
+    </div>
+</section>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=6373ad20b529890649e467921792b202&libraries=services,clusterer,drawing"></script>
+<script th:inline="javascript">
+    var reviewDtos = /*[[${reviewDtos}]]*/;
+</script>
+<script th:inline="javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        var deleteReviewBtn = document.getElementById('deleteReviewBtn');
+        if (deleteReviewBtn) {
+            deleteReviewBtn.addEventListener('click', function() {
+                var reviewId = document.getElementById('reviewId').value;
+                if (!reviewId) {
+                    alert('삭제할 리뷰가 없습니다.');
+                    return;
+                }
+                var deleteUrl = '/reviews/delete/' + reviewId;
+                if (confirm('정말로 삭제하시겠습니까?')) {
+                    $.ajax({
+                        type: 'POST',
+                        url: deleteUrl,
+                        success: function(response) {
+                            alert('리뷰가 삭제되었습니다!');
+                            window.location.reload(); // 페이지를 다시로드합니다.
+                            console.log("delete success");
+                        },
+                        error: function(xhr, status, error) {
+                            console.error(xhr.responseText);
+                        }
+                    });
+                }
+            });
+        }
+    });
+</script>
+<script>
+
+    window.onload = function () {
+       let nowPage = [[${reviewDtos.getNumber()}]] + 1;    // 현재 페이지
+       let totalPage = [[${reviewDtos.getTotalPages()}]];  // 전체 페이지 수
+
+       let firstPage;  // 화면에 출력될 첫 페이지
+       for (let i = nowPage ; i >= 1 ; i --) {
+           if(i % 5 == 1) {
+               firstPage = i;
+               break;
+           }
+       }
+
+       let lastPage;   // 화면에 출력될 마지막 페이지
+       let nextButton; // 다음 버튼 출력 여부
+       if (firstPage + 4 >= totalPage) {
+           lastPage = totalPage;
+           nextButton = false;
+       } else {
+           lastPage = firstPage + 4;
+           nextButton = true;
+       }
+
+       // HTML 생성
+       let pageHtml = "";
+       pageHtml += "<li><a class='page-link' href='" + makeUrl(1) +  "'>&laquo;</a></li>";
+       if (firstPage != 1) {
+           pageHtml += "<li><a class='page-link' href='" + makeUrl(firstPage - 1) +  "'>&lsaquo;</a></li>";
+       }
+
+       for (let i = firstPage; i <= lastPage; i++) {
+           if (i == nowPage) {
+               pageHtml += "<li class='page-item active'><a class= 'page-link'>" + i + "</a></li>";
+           } else {
+               pageHtml += "<li class='page-item'><a class= 'page-link' href='" + makeUrl(i) + "'>" + i + "</a></li>";
+           }
+       }
+
+       if (nextButton) {
+           pageHtml += "<li><a class='page-link' href='" + makeUrl(lastPage + 1) +  "'>&rsaquo;</a></li>";
+       }
+       pageHtml += "<li><a class='page-link' href='" + makeUrl(totalPage) +  "'>&raquo;</a></li>";
+
+       $("#paging-ul").html(pageHtml);
+   };
+
+   function makeUrl(page) {
+       let url = "/reviews/myReview" + "?page=" + page;
+
+       return url;
+   }
+
+   // 폼 전송 시 foodInput 태그에 입력된 값들을 eatFoods 필드에 할당하는 함수
+   function updateEatFoods() {
+       var eatFoods = [];
+       var foodInputs = document.getElementsByName("food");
+       for (var i = 0; i < foodInputs.length; i++) {
+           if (foodInputs[i].value.trim() !== "") {
+               eatFoods.push(foodInputs[i].value.trim());
+           }
+       }
+       // hidden input 태그에 수집된 음식들을 콤마로 연결하여 할당
+       document.getElementById("eatFoodsInput").value = eatFoods.join(',');
+   }
+
+   // 폼 전송 버튼 클릭 시 updateEatFoods 함수 호출
+   document.getElementById("modifyForm").addEventListener("submit", updateEatFoods);
+
+   // 클릭한 마커를 담을 변수
+   var selectedMarker = null;
+
+   // 마커를 담을 배열입니다
+   var markers = [];
+
+   var mapContainer = document.getElementById('map'), // 지도를 표시할 div
+       mapOption = {
+           center: new kakao.maps.LatLng(37.566826, 126.9786567), // 지도의 중심좌표
+           level: 3 // 지도의 확대 레벨
+       };
+
+   // 지도를 생성합니다
+   var map = new kakao.maps.Map(mapContainer, mapOption);
+
+   // 검색 결과 목록이나 마커를 클릭했을 때 장소명을 표출할 인포윈도우를 생성합니다
+   var infowindow = new kakao.maps.InfoWindow({zIndex:1});
+
+
+
+
+   // displayMarkers 함수 정의
+   function displayMarkers(reviewDtos) {
+       var listEl = document.getElementById('placesList');
+
+
+       // 페이지 객체의 content를 반복하여 처리
+       reviewDtos.content.forEach(function(reviewDto, index) {
+           var posx = parseFloat(reviewDto.posX)
+           var posy = parseFloat(reviewDto.posY)
+           // 리뷰 데이터의 position 필드를 LatLng 객체로 변환
+           var placePosition = new kakao.maps.LatLng(posx, posy);
+
+           //console.log(reviewDto.eatFoods);
+
+           marker = addMarker(placePosition, index);
+           itemEl = getListItem(index, reviewDto);
+           listEl.appendChild(itemEl);
+
+           (function(marker, title, address,reviewDto) {
+               kakao.maps.event.addListener(marker, 'click', function() {
+                   displayInfowindow(marker, title, address);
+                   fillReviewForm(reviewDto);
+               });
+               itemEl.onclick = function() {
+                   displayInfowindow(marker, title, address);
+                   fillReviewForm(reviewDto);
+               };
+           })(marker, reviewDto.place_name, reviewDto.address, reviewDto);
+       });
+   }
+
+   // 선택한 리뷰 정보를 폼에 채워 넣는 함수
+   function fillReviewForm(reviewDto) {
+       // 리뷰 정보를 폼에 채워 넣음
+       document.getElementById('place_name').value = reviewDto.place_name;
+       document.getElementById('address').value = reviewDto.address;
+       document.getElementById('title').value = reviewDto.title;
+       document.getElementById('content').value = reviewDto.content;
+       document.getElementById('reviewId').value = reviewDto.id;
+       document.getElementById('rating').value = reviewDto.rating;
+
+       // 동적으로 음식 입력란을 채워 넣는 예시
+       var foodsContainer = document.getElementById('foods');
+       removeAllChildNodes(foodsContainer);
+       reviewDto.eatFoods.forEach(function(food) {
+           // 라벨, 인풋, 버튼을 담을 div 생성
+           var foodInputGroup = document.createElement("div");
+           foodInputGroup.classList.add("row", "mb-3");
+           // Label 생성
+           var foodLabel = document.createElement("label");
+           foodLabel.for = "foods";
+           foodLabel.classList.add("col-sm-2","col-form-label");
+           foodLabel.textContent = "먹은음식";
+           // input 생성
+           var foodInputDiv  = document.createElement("div");
+           foodInputDiv.classList.add("col-sm-8");
+           var foodInput = document.createElement("input");
+           foodInput.type = "text";
+           foodInput.value = food; // 폼 데이터 전송을 위한 이름
+           foodInput.classList.add("form-control");
+           foodInputDiv.appendChild(foodInput);
+
+           var plusButtonDiv = document.createElement("div");
+           plusButtonDiv.classList.add("col-sm-2");
+           var plusButton = document.createElement("button");
+           plusButton.type = "button";
+           plusButton.classList.add("btn","btn-primary");
+           plusButton.textContent = "+";
+           plusButton.onclick = addFoodInput;
+           plusButtonDiv.appendChild(plusButton);
+
+
+           // 라벨, 인풋, 버튼을 담은 div를 추가
+           foodInputGroup.appendChild(foodLabel);
+           foodInputGroup.appendChild(foodInputDiv);
+           foodInputGroup.appendChild(plusButtonDiv);
+
+           // foodsContainer에 추가
+           foodsContainer.appendChild(foodInputGroup);
+       });
+
+       function addFoodInput() {
+           var foodsDiv = document.getElementById("foods");
+           // 라벨, 인풋, 버튼을 담을 div 생성
+           var foodInputGroup = document.createElement("div");
+           foodInputGroup.classList.add("row", "mb-3");
+           // Label 생성
+           var foodLabel = document.createElement("label");
+           foodLabel.for = "foods";
+           foodLabel.classList.add("col-sm-2","col-form-label");
+           foodLabel.textContent = "먹은음식";
+           // input 생성
+           var foodInputDiv  = document.createElement("div");
+           foodInputDiv.classList.add("col-sm-8");
+           var foodInput = document.createElement("input");
+           foodInput.type = "text";
+           foodInput.name = "food"; // 폼 데이터 전송을 위한 이름
+           foodInput.classList.add("form-control");
+           foodInputDiv.appendChild(foodInput);
+
+           var plusButtonDiv = document.createElement("div");
+           plusButtonDiv.classList.add("col-sm-2");
+           var plusButton = document.createElement("button");
+           plusButton.type = "button";
+           plusButton.classList.add("btn","btn-primary");
+           plusButton.textContent = "+";
+           plusButton.onclick = addFoodInput;
+           plusButtonDiv.appendChild(plusButton);
+
+           // 라벨, 인풋, 버튼을 담은 div를 추가
+           foodInputGroup.appendChild(foodLabel);
+           foodInputGroup.appendChild(foodInputDiv);
+           foodInputGroup.appendChild(plusButtonDiv);
+
+           // foodsDiv에 추가
+           foodsDiv.appendChild(foodInputGroup);
+       }
+
+
+       // 이미지 업로드 필드를 채움
+
+       var imageContainer = document.getElementById('imageContainer');
+       imageContainer.innerHTML = ''; // 이미지 컨테이너 내용 초기화
+       reviewDto.uploadImgPath.forEach(function(uploadImage) {
+           var image = document.createElement('img');
+           image.src='/reviews/images/' + uploadImage; // Thymeleaf 형식의 이미지 경로 설정
+           image.style.maxWidth = '100px'; // 이미지 크기 조절
+           image.style.maxHeight = '100px'; // 이미지 크기 조절
+           image.style.float = 'left'; // 이미지를 왼쪽으로 정렬합니다.
+           image.style.marginRight = '5px'; // 오른쪽 마진 추가
+           imageContainer.appendChild(image);
+       });
+
+   }
+
+
+   // 검색결과 목록의 자식 Element를 제거하는 함수입니다
+   function removeAllChildNodes(el) {
+       while (el.hasChildNodes()) {
+           el.removeChild(el.lastChild);
+       }
+   }
+
+
+
+
+
+   // 타임리프로부터 가져온 페이지 객체를 displayMarkers 함수에 전달
+   displayMarkers(reviewDtos);
+
+
+   // 마커를 생성하고 지도 위에 마커를 표시하는 함수입니다
+   function addMarker(position, idx) {
+       var imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_blue.png', // 마커 이미지 url, 스프라이트 이미지를 씁니다
+           imageSize = new kakao.maps.Size(36, 37),  // 마커 이미지의 크기
+           imgOptions = {
+               spriteSize: new kakao.maps.Size(36, 691), // 스프라이트 이미지의 크기
+               spriteOrigin: new kakao.maps.Point(0, (idx * 46) + 10), // 스프라이트 이미지 중 사용할 영역의 좌상단 좌표
+               offset: new kakao.maps.Point(13, 37) // 마커 좌표에 일치시킬 이미지 내에서의 좌표
+           },
+           markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imgOptions),
+           marker = new kakao.maps.Marker({
+               position: position, // 마커의 위치
+               image: markerImage
+           });
+           // 마커 객체에 마커아이디와 마커의 기본 이미지를 추가합니다
+           marker.normalImage = markerImage;
+
+       marker.setMap(map); // 지도 위에 마커를 표출합니다
+       markers.push(marker);  // 배열에 생성된 마커를 추가합니다
+
+       return marker;
+   }
+
+
+   // 검색결과 항목을 Element로 반환하는 함수입니다
+   function getListItem(index, places) {
+       var el = document.createElement('li'),
+           itemStr = '<span class="markerbg marker_' + (index + 1) + '"></span>' +
+               '<div class="info">' +
+               '   <h5>' + places.place_name + '</h5>';
+       itemStr += '    <span>' + places.address + '</span>' +
+           '</div>';
+
+       el.innerHTML = itemStr;
+       el.className = 'item';
+
+
+
+       return el;
+   }
+
+   // 인포윈도우에 장소명을 표시하는 함수입니다
+   function displayInfowindow(marker, title, address) {
+       var content = '<div style="padding:5px;z-index:1;">' + title + '</div>';
+
+
+       // 클릭된 마커가 없고, click 마커가 클릭된 마커가 아니면
+       // 마커의 이미지를 클릭 이미지로 변경합니다
+       if (!selectedMarker || selectedMarker !== marker) {
+           // 클릭된 마커 객체가 null이 아니면
+           // 클릭된 마커의 이미지를 기본 이미지로 변경하고
+           !!selectedMarker && selectedMarker.setImage(selectedMarker.normalImage);
+           var clickedImageSrc = 'https://cdn.icon-icons.com/icons2/1283/PNG/512/1497620001-jd22_85165.png'; // 클릭한 마커의 이미지 url
+           var imageSize = new kakao.maps.Size(52, 53);  // 마커 이미지의 크기
+           var markerImage = new kakao.maps.MarkerImage(clickedImageSrc, imageSize); // 클릭한 마커 이미지 생성
+           // 현재 클릭된 마커의 이미지는 클릭 이미지로 변경합니다
+           marker.setImage(markerImage);
+       }
+
+       // 클릭된 마커를 현재 클릭된 마커 객체로 설정합니다
+       selectedMarker = marker;
+
+       infowindow.setContent(content);
+       infowindow.open(map, marker);
+
+       //console.log(address);
+       map.setCenter(marker.getPosition());
+       map.setLevel(2);
+   }
+
+</script>
+</body>
+</html>

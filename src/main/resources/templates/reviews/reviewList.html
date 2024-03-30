@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="fragments/header.html :: head"/>
+<body style="background-color:#F0EAB7;">
+<div th:replace="fragments/header.html :: header ('all')"/>
+
+<section class="features-icons bg-light text-center">
+    <div class="container" style="margin-top:-10px;">
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="map_wrap">
+                    <div id="map" style="width:100%; height:500px; position:relative;overflow:hidden; border:3px solid #5973B4;"></div>
+                    <div id="menu_wrap_right" class="bg_white">
+                        <div class="option"></div>
+                        <hr>
+                        <ul id="placesList">
+
+                        </ul>
+                        <ul id="paging-ul" class="pagination justify-content-center"></ul>
+                    </div>
+                </div>
+            </div>
+            <div id="detailInfo" class="col-lg-4" style="background-color:white; border:3px solid #5973B4; max-height: 500px; overflow-y: auto; display: none;">
+                <br/>
+                <h3 align="center" style="color:#394C7B">맛집정보</h3>
+                <br/>
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">맛집명: </label>
+                    <div class="col-sm-10">
+                        <input type="text"class="form-control" id="place_name"
+                              style="border:none" readonly/>
+                    </div>
+                </div>
+                <hr/>
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">주소: </label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="address" style="border:none" readonly/>
+                    </div>
+                </div>
+                <hr/>
+                <div id="foods"></div>
+                <hr/>
+                <div class="row mb-3" id="imageDiv" style="display: none;">
+                    <label class="col-sm-2 col-form-label">첨부<br/>이미지</label>
+                    <div class="col-sm-10" id="imageContainer">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">평점: </label>
+                    <div class="col-sm-3">
+                        <input type="text" class="form-control" id="rating" style="border:none" readonly>
+                    </div>
+                </div>
+                <hr/>
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">제목: </label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="title" style="border:none" readonly/>
+                    </div>
+                </div>
+                <hr/>
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">내용: </label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="content" style="border:none" readonly/>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</section>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=6373ad20b529890649e467921792b202&libraries=services,clusterer,drawing"></script>
+<script th:inline="javascript">
+    var placeDtoList = /*[[${placeDtoList}]]*/;
+</script>
+
+
+<script>
+
+
+
+
+
+   // 클릭한 마커를 담을 변수
+   var selectedMarker = null;
+
+   // 마커를 담을 배열입니다
+   var markers = [];
+
+   var mapContainer = document.getElementById('map'), // 지도를 표시할 div
+       mapOption = {
+           center: new kakao.maps.LatLng(37.566826, 126.9786567), // 지도의 중심좌표
+           level: 3 // 지도의 확대 레벨
+       };
+
+   // 지도를 생성합니다
+   var map = new kakao.maps.Map(mapContainer, mapOption);
+
+   // 검색 결과 목록이나 마커를 클릭했을 때 장소명을 표출할 인포윈도우를 생성합니다
+   var infowindow = new kakao.maps.InfoWindow({zIndex:1});
+
+  // 타임리프로부터 가져온 페이지 객체를 displayMarkers 함수에 전달
+   displayMarkers(placeDtoList);
+
+
+   // displayMarkers 함수 정의
+   function displayMarkers(placeDtoList) {
+       //var listEl = document.getElementById('placeList');
+
+
+       // 페이지 객체의 content를 반복하여 처리
+       placeDtoList.forEach(function(placeDto, index) {
+           var posx = parseFloat(placeDto.posX)
+           var posy = parseFloat(placeDto.posY)
+           // 리뷰 데이터의 position 필드를 LatLng 객체로 변환
+           var placePosition = new kakao.maps.LatLng(posx, posy);
+
+           marker = addMarker(placePosition, index, placeDto.checkLike);
+           //itemEl = getListItem(index, reviewDto);
+           //listEl.appendChild(itemEl);
+
+           (function(marker, title, address, posX, posY, checkLike) {
+               kakao.maps.event.addListener(marker, 'click', function() {
+                   displayReviewList(posX, posY)
+                   displayInfowindow(marker, title, address, checkLike);
+               });
+
+           })(marker, placeDto.place_name, placeDto.address, posx, posy, placeDto.checkLike);
+       });
+   }
+
+
+
+   // 선택한 리뷰 정보를 폼에 채워 넣는 함수
+   function fillReviewForm(reviewDto) {
+        // 보이게 하려는 hidden div를 선택합니다.
+        var hiddenDiv = document.getElementById('detailInfo');
+        // hidden 속성을 제거하여 보이게 합니다.
+        hiddenDiv.style.display = '';
+
+       // 리뷰 정보를 폼에 채워 넣음
+       document.getElementById('place_name').value = reviewDto.place_name;
+       document.getElementById('address').value = reviewDto.address;
+       document.getElementById('title').value = reviewDto.title;
+       document.getElementById('rating').value=reviewDto.rating+'/10';
+       document.getElementById('content').value = reviewDto.content;
+
+
+       // 동적으로 음식 입력란을 채워 넣는 예시
+       var foodsContainer = document.getElementById('foods');
+       removeAllChildNodes(foodsContainer);
+       reviewDto.eatFoods.forEach(function(food) {
+            // 라벨, 인풋, 버튼을 담을 div 생성
+           var foodInputGroup = document.createElement("div");
+           foodInputGroup.classList.add("row", "mb-3");
+           // Label 생성
+           var foodLabel = document.createElement("label");
+           foodLabel.for = "foods";
+           foodLabel.classList.add("col-sm-2","col-form-label");
+           foodLabel.textContent = "음식: ";
+           // input 생성
+           var foodInputDiv  = document.createElement("div");
+           foodInputDiv.classList.add("col-sm-8");
+           var foodInput = document.createElement("input");
+           foodInput.style.border='none';
+           foodInput.type = "text";
+           foodInput.value = food; // 폼 데이터 전송을 위한 이름
+           foodInput.classList.add("form-control");
+           foodInputDiv.appendChild(foodInput);
+
+
+           // 라벨, 인풋, 버튼을 담은 div를 추가
+           foodInputGroup.appendChild(foodLabel);
+           foodInputGroup.appendChild(foodInputDiv);
+
+           // foodsContainer에 추가
+           foodsContainer.appendChild(foodInputGroup);
+       });
+
+
+       // 이미지 업로드 필드를 채움
+        // 이미지 컨테이너를 표시합니다.
+
+
+        // 이미지 컨테이너 내용 초기화
+        var imageContainer = document.getElementById('imageContainer');
+        var imageDiv = document.getElementById('imageDiv');
+        imageContainer.innerHTML = '';
+        if (reviewDto.uploadImgPath.length > 0) {
+            imageDiv.style.display = ''; // 또는 다른 원하는 display 값으로 설정할 수 있습니다.
+            // 이미지를 추가합니다.
+            reviewDto.uploadImgPath.forEach(function(uploadImage) {
+
+                var image = document.createElement('img');
+                image.src = '/reviews/images/' + uploadImage; // Thymeleaf 형식의 이미지 경로 설정
+                image.style.maxWidth = '100px'; // 이미지 크기 조절
+                image.style.maxHeight = '100px'; // 이미지 크기 조절
+                image.style.float = 'left'; // 이미지를 왼쪽으로 정렬합니다.
+                image.style.marginRight = '5px'; // 오른쪽 마진 추가
+                imageContainer.appendChild(image);
+
+            });
+
+        }
+         var hr = document.createElement('hr');
+         imageDiv.appendChild(hr);
+   }
+
+
+   // 검색결과 목록의 자식 Element를 제거하는 함수입니다
+   function removeAllChildNodes(el) {
+       while (el.hasChildNodes()) {
+           el.removeChild(el.lastChild);
+       }
+   }
+
+   // 마커를 생성하고 지도 위에 마커를 표시하는 함수입니다
+    function addMarker(position, idx, checkLike) {
+        var imageSrc;
+        var imageSize = new kakao.maps.Size(36, 37);  // 마커 이미지의 크기
+        var imgOptions = {
+            offset: new kakao.maps.Point(13, 37) // 마커 좌표에 일치시킬 이미지 내에서의 좌표
+        };
+
+        // checkLike 값에 따라 이미지 경로 설정
+        if (!checkLike) {
+            imageSrc = 'https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_number_blue.png';
+            imgOptions.spriteSize = new kakao.maps.Size(36, 691); // 스프라이트 이미지의 크기
+            imgOptions.spriteOrigin = new kakao.maps.Point(0, (idx * 46) + 10); // 스프라이트 이미지 중 사용할 영역의 좌상단 좌표
+        } else {
+            imageSrc = 'https://blog.kakaocdn.net/dn/c5yATu/btrHOTkT6KY/MpZsEJXp3iavFY2NHKDiZ1/img.png';
+        }
+
+        var markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imgOptions);
+
+        var marker = new kakao.maps.Marker({
+            position: position, // 마커의 위치
+            image: markerImage
+        });
+
+        // 마커 객체에 마커아이디와 마커의 기본 이미지를 추가합니다
+        marker.normalImage = markerImage;
+
+        marker.setMap(map); // 지도 위에 마커를 표출합니다
+        markers.push(marker);  // 배열에 생성된 마커를 추가합니다
+
+        return marker;
+    }
+
+
+
+   // 검색결과 항목을 Element로 반환하는 함수입니다
+   function getListItem(index, places) {
+       var el = document.createElement('li'),
+           itemStr = '<span class="markerbg marker_' + (index + 1) + '"></span>' +
+               '<div class="info">' +
+               '   <h5>' + places.place_name + '</h5>';
+       itemStr += '    <span>' + places.address + '</span>' +
+           '</div>';
+
+       el.innerHTML = itemStr;
+       el.className = 'item';
+
+
+
+       return el;
+   }
+
+
+    //마커 클릭시 해당 장소에 달린 리뷰들 반환하는 함수
+    function displayReviewList(posX, posY){
+        var placesList = document.getElementById('placesList')
+        removeAllChildNodes(placesList);
+        // AJAX를 사용하여 서버로 데이터를 전송하고 결과를 받아옴
+        $.ajax({
+            url: '/reviews/byPlace', // 서버의 API 엔드포인트 URL
+            method: 'GET', // GET 요청
+            data: {posX: posX, posY: posY}, // posX와 posY를 서버에 전송
+            success: function(response) { // 성공적으로 응답을 받았을 때
+                // 서버로부터 받은 장소 리스트(reviewDtos)를 가지고 원하는 작업을 수행
+                // 예를 들어, 받은 장소 리스트를 사용하여 리뷰를 표시하는 함수 호출 등
+                // 표시할 위치에 리뷰를 표시하는 코드 작성
+
+                var reviewDtos = response;
+                // 장소 리스트를 HTML로 렌더링하여 추가
+                reviewDtos.forEach(function(reviewDto,index) {
+                    var el = document.createElement('li');
+                    itemStr = '<h2 class="info" style="text-align: left;">' + (index+1) + '. 제목 : '
+                         + reviewDto.title + '</h2>' ;
+                         itemStr += '<div class="info" style="text-align: left; margin-left:10px;">'+
+                         '<span>작성자 : ' + reviewDto.memberNickname + '</span></div>';
+                        itemStr += '<div class="info" style="text-align: left; margin-left:10px;">'+ '별점 : '+
+                          '<span class="tel">' + reviewDto.rating + '</span>' +
+                        '/10 </div>';
+                        itemStr += '<hr>';
+                    el.innerHTML = itemStr;
+
+                    document.getElementById('placesList').appendChild(el);
+
+                    el.onclick = function() {
+                        fillReviewForm(reviewDto);
+                    };
+
+                });
+            },
+            error: function(xhr, status, error) { // 오류가 발생했을 때
+                console.error(error); // 오류 메시지를 콘솔에 출력
+            }
+        });
+    }
+
+   // 인포윈도우에 장소명을 표시하는 함수입니다
+   function displayInfowindow(marker, title, address, checkLike) {
+        // checkLike 값에 따라 하트 이미지 경로 설정
+        var heartImageSrc = checkLike ? '/images/fill-hearts.svg' : '/images/empty-hearts.svg';
+        // 하트 이미지 추가
+        var content = '<div style="padding:5px;z-index:1;">' +
+                      '<img src="' + heartImageSrc + '" alt="Heart" style="width: 20px; height: 20px; margin-left: 5px; margin-right:15px;" ' +
+                      'onclick="' + (checkLike ? 'delLike' : 'addLike') + '(' + marker.getPosition().getLat() + ', ' + marker.getPosition().getLng() + ')">' +
+                      '<span>' + title + '</span>' +
+                      '</div>';
+       // 클릭된 마커가 없고, click 마커가 클릭된 마커가 아니면
+       // 마커의 이미지를 클릭 이미지로 변경합니다
+       if (!selectedMarker || selectedMarker !== marker) {
+           // 클릭된 마커 객체가 null이 아니면
+           // 클릭된 마커의 이미지를 기본 이미지로 변경하고
+           !!selectedMarker && selectedMarker.setImage(selectedMarker.normalImage);
+           var clickedImageSrc = 'https://cdn.icon-icons.com/icons2/1283/PNG/512/1497620001-jd22_85165.png';
+           //https://t1.daumcdn.net/localimg/localimages/07/mapapidoc/markerStar.png'; // 클릭한 마커의 이미지 url
+           var imageSize = new kakao.maps.Size(52, 53);  // 마커 이미지의 크기
+           var markerImage = new kakao.maps.MarkerImage(clickedImageSrc, imageSize); // 클릭한 마커 이미지 생성
+           // 현재 클릭된 마커의 이미지는 클릭 이미지로 변경합니다
+           marker.setImage(markerImage);
+       }
+
+       // 클릭된 마커를 현재 클릭된 마커 객체로 설정합니다
+       selectedMarker = marker;
+
+       infowindow.setContent(content);
+       infowindow.open(map, marker);
+
+       //console.log(marker.getPosition());
+       map.setCenter(marker.getPosition());
+       map.setLevel(2);
+   }
+    // 좋아요 추가하는 함수
+    function addLike(posX, posY) {
+        // AJAX 요청을 보내서 좋아요를 추가하는 작업을 수행합니다.
+        $.ajax({
+            url: '/members/addLike',
+            method: 'POST',
+            data: {
+                posX: posX,
+                posY: posY
+            },
+            success: function(response) {
+                // 좋아요 추가가 성공적으로 처리되었을 때 수행할 작업을 추가합니다.
+                console.log('좋아요가 성공적으로 추가되었습니다.');
+                // 좋아요를 추가한 후 페이지를 새로고침합니다.
+                location.reload();
+            },
+            error: function(xhr, status, error) {
+                // 오류가 발생했을 때 처리할 작업을 추가합니다.
+                console.error('좋아요 추가 중 오류가 발생했습니다:', error);
+            }
+        });
+    }
+    // 좋아요 제거하는 함수
+    function delLike(posX, posY) {
+        // AJAX 요청을 보내서 좋아요를 추가하는 작업을 수행합니다.
+        $.ajax({
+            url: '/members/delLike',
+            method: 'POST',
+            data: {
+                posX: posX,
+                posY: posY
+            },
+            success: function(response) {
+                console.log('좋아요가 성공적으로 제거되었습니다.');
+                location.reload();
+            },
+            error: function(xhr, status, error) {
+                // 오류가 발생했을 때 처리할 작업을 추가합니다.
+                console.error('좋아요 추가 중 오류가 발생했습니다:', error);
+            }
+        });
+    }
+</script>
+</body>
+</html>
